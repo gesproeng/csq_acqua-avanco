@@ -10,7 +10,7 @@
    ===================================================================== */
 
 // 1) NOME DA OBRA (aparece no título, no cabeçalho e no rodapé)
-const NOME_OBRA = "NOME DA OBRA";
+const NOME_OBRA = "[CSQ ACQUA LIVING]";
 
 // 2) LINK DO CSV DA PLANILHA
 //    No Google Sheets: Arquivo > Compartilhar > Publicar na Web > escolha a aba
@@ -19,7 +19,7 @@ const CSV_URL = "COLE AQUI O LINK CSV";
 
 // 3) MÊS DE REFERÊNCIA (a planilha não traz a data; atualize a cada fechamento)
 //    Exemplo de formato: "Setembro/2026"
-const MES_REFERENCIA = "[Mês/Ano]";
+const MES_REFERENCIA = "[Outubro/2026]";
 
 // 4) BLOCOS DA OBRA: uma linha por bloco, na ordem em que devem aparecer (1, 2 ou 3 blocos).
 //    "nome" é como aparece na página; "cabecalho" é o texto da célula de título do
@@ -27,15 +27,16 @@ const MES_REFERENCIA = "[Mês/Ano]";
 //    Se o cabeçalho completo não for achado, a página procura só pelo "nome".
 //    Para tirar ou acrescentar um bloco, apague ou copie uma linha (cada linha termina com vírgula).
 const BLOCOS_OBRA = [
-  { nome: "Bloco A", cabecalho: "NOME DA OBRA BLOCO A" },
-  { nome: "Bloco B", cabecalho: "NOME DA OBRA BLOCO B" },
+  { nome: "Bloco A", cabecalho: "CSQ ACQUA LIVING BLOCO A" },
+  { nome: "Bloco B", cabecalho: "CSQ ACQUA LIVING BLOCO B" },
+   { nome: "Bloco C", cabecalho: "CSQ ACQUA LIVING BLOCO C" },
 ];
 
 // 5) CABEÇALHO DO CONSOLIDADO (a coluna que já traz o avanço de todos os blocos juntos).
 //    Se não for achado, a página procura "Avanço blocos", "Avanço dos blocos" ou "Consolidado".
 //    Obra de um bloco só, sem coluna consolidada na planilha: deixe vazio ("") e a
 //    página usa os percentuais e o "Avanço total" do próprio bloco.
-const CABECALHO_CONSOLIDADO = "NOME DA OBRA AVANÇO BLOCOS";
+const CABECALHO_CONSOLIDADO = "CSQ ACQUA LIVING AVANÇO BLOCOS";
 
 /* ===================== fim da configuração ========================== */
 document.title = `${NOME_OBRA} — Avanço Físico`;
