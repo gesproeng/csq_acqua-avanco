@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<script>
+/* =====================================================================
+   CONFIGURAÇÃO DA OBRA — edite somente este bloco
+   Cada obra tem a sua própria cópia deste arquivo. Não coloque aqui o
+   link de outra obra: quem abre a página consegue ver este bloco.
+   ===================================================================== */
+
+// 1) NOME DA OBRA (aparece no título, no cabeçalho e no rodapé)
+const NOME_OBRA = "NOME DA OBRA";
+
+// 2) LINK DO CSV DA PLANILHA
+//    No Google Sheets: Arquivo > Compartilhar > Publicar na Web > escolha a aba
+//    e o formato "Valores separados por vírgula (.csv)". Cole o link entre as aspas.
+const CSV_URL = "COLE AQUI O LINK CSV";
+
+// 3) MÊS DE REFERÊNCIA (a planilha não traz a data; atualize a cada fechamento)
+//    Exemplo de formato: "Setembro/2026"
+const MES_REFERENCIA = "[Mês/Ano]";
+
+// 4) BLOCOS DA OBRA: uma linha por bloco, na ordem em que devem aparecer (1, 2 ou 3 blocos).
+//    "nome" é como aparece na página; "cabecalho" é o texto da célula de título do
+//    bloco na aba da planilha (maiúsculas e acentos não importam).
+//    Se o cabeçalho completo não for achado, a página procura só pelo "nome".
+//    Para tirar ou acrescentar um bloco, apague ou copie uma linha (cada linha termina com vírgula).
+const BLOCOS_OBRA = [
+  { nome: "Bloco A", cabecalho: "NOME DA OBRA BLOCO A" },
+  { nome: "Bloco B", cabecalho: "NOME DA OBRA BLOCO B" },
+];
+
+// 5) CABEÇALHO DO CONSOLIDADO (a coluna que já traz o avanço de todos os blocos juntos).
+//    Se não for achado, a página procura "Avanço blocos", "Avanço dos blocos" ou "Consolidado".
+//    Obra de um bloco só, sem coluna consolidada na planilha: deixe vazio ("") e a
+//    página usa os percentuais e o "Avanço total" do próprio bloco.
+const CABECALHO_CONSOLIDADO = "NOME DA OBRA AVANÇO BLOCOS";
+
+/* ===================== fim da configuração ========================== */
+document.title = `${NOME_OBRA} — Avanço Físico`;
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Avanço Físico</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+  /* Layout: cabeçalho, faixa de resumo (medidor + contagens), gráficos com abas, tabela detalhada.
+     Tema claro único (pedido do cliente): cores definidas explicitamente. */
+  :root {
+    color-scheme: light;
+    --bg: #F3F5F4;
+    --surface: #FFFFFF;
+    --ink: #1C2A30;
+    --muted: #56646B;
+    --line: #DCE2E0;
+    --accent: #1F4E5F;
+    --accent-soft: #E3ECEF;
+
+    /* Faixas de avanço (sempre acompanhadas de texto) */
+    --st-concl: #2E7D4F;
+    --st-concl-soft: #E2F1E7;
+    --st-and: #C27A0E;
+    --st-and-text: #8F5800;
+    --st-and-soft: #FBEFD9;
+    --st-nao: #A3ADB2;
+    --st-nao-text: #56646B;
+    --st-nao-soft: #ECEFF0;
+
+    /* Séries do comparativo */
+    --bloco-a: #2F4F7F;
+    --bloco-b: #7FB0C4;
+
+    --font-display: "Barlow Semi Condensed", "Arial Narrow", "Segoe UI", Roboto, sans-serif;
+    --font-body: "Source Sans 3", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  /* ---------- Cabeçalho ---------- */
+  .topo { background: var(--accent); color: #FFFFFF; }
+  .topo .wrap { padding-block: 22px 26px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: flex-end; justify-content: space-between; }
+  .eyebrow { margin: 0 0 4px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(26px, 5vw, 38px);
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+  .mes { margin: 0; font-size: 15px; }
+  .mes strong { font-weight: 700; }
+
+  main .wrap { padding-block: 24px 40px; display: flex; flex-direction: column; gap: 24px; }
+
+  .painel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    min-width: 0;
+  }
+  h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1.2;
+  }
+
+  /* ---------- Estados ---------- */
+  .estado { display: flex; gap: 14px; align-items: flex-start; }
+  .estado p { margin: 0; }
+  .estado .titulo { font-weight: 700; font-size: 17px; }
+  .estado .detalhe { color: var(--muted); font-size: 15px; margin-top: 4px; overflow-wrap: anywhere; }
+  .spinner {
+    flex: none; width: 22px; height: 22px; margin-top: 2px;
+    border: 3px solid var(--accent-soft); border-top-color: var(--accent);
+    border-radius: 50%; animation: gira .9s linear infinite;
+  }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  .estado.erro { border-color: #E3B4AE; background: #FDF3F1; }
+  .estado.erro .icone {
+    flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: #B3261E; color: #FFFFFF; font-weight: 700;
+    display: grid; place-items: center; font-size: 15px; margin-top: 1px;
+  }
+  .estado.erro .titulo { color: #8C1D18; }
+  .btn {
+    font: inherit; font-weight: 600; font-size: 15px;
+    border: 1px solid var(--accent); color: var(--accent); background: var(--surface);
+    border-radius: 8px; padding: 6px 14px; cursor: pointer; margin-top: 12px;
+  }
+  .btn:hover { background: var(--accent-soft); }
+  :focus-visible { outline: 3px solid #4C8DB0; outline-offset: 2px; }
+
+  /* ---------- Resumo ---------- */
+  .resumo { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 760px) { .resumo { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+
+  .total { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+  .total h2 { font-size: 15px; font-family: var(--font-body); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .medidor { position: relative; width: min(260px, 72vw); aspect-ratio: 1; max-width: 100%; }
+  .medidor svg { width: 100%; height: 100%; display: block; transform: rotate(-90deg); }
+  .medidor .trilho { fill: none; stroke: var(--accent-soft); }
+  .medidor .arco { fill: none; stroke: var(--accent); stroke-linecap: round; transition: stroke-dashoffset .9s ease-out; }
+  .medidor .centro { position: absolute; inset: 0; display: grid; place-content: center; }
+  .medidor .valor {
+    font-family: var(--font-display); font-weight: 700;
+    font-size: clamp(38px, 11vw, 50px); line-height: 1; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .medidor .rotulo { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .nota { margin: 0; font-size: 14px; color: var(--muted); max-width: 40ch; }
+
+  .contagens { display: grid; grid-template-columns: 1fr; gap: 12px; align-content: start; }
+  .contagens .legenda-cards { margin: 0; font-size: 14px; color: var(--muted); }
+  .card {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 14px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 18px;
+  }
+  .card .marca { width: 12px; height: 40px; border-radius: 3px; grid-row: span 2; }
+  .card .nome { font-weight: 700; font-size: 17px; }
+  .card .criterio { font-size: 14px; color: var(--muted); grid-column: 2; }
+  .card .num {
+    grid-column: 3; grid-row: 1 / span 2;
+    font-family: var(--font-display); font-weight: 700; font-size: 40px; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .card .num small { font-family: var(--font-body); font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+  .card.concl .marca { background: var(--st-concl); }
+  .card.and .marca { background: var(--st-and); }
+  .card.nao .marca { background: var(--st-nao); }
+
+  /* ---------- Gráficos ---------- */
+  .graf-topo { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .abas, .seletor { display: flex; flex-wrap: wrap; gap: 6px; }
+  .abas { border-bottom: 1px solid var(--line); gap: 0; }
+  .aba {
+    font: inherit; font-weight: 600; font-size: 16px; background: none; border: 0;
+    padding: 10px 14px; color: var(--muted); cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -1px;
+  }
+  .aba[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .seletor-linha { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+  .seletor-rotulo { font-size: 14px; color: var(--muted); margin-right: 4px; }
+  .seg {
+    font: inherit; font-size: 15px; font-weight: 600;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 14px; cursor: pointer;
+  }
+  .seg[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
+  .legenda li { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
+  .grafico { position: relative; width: 100%; }
+  .graf-nota { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* ---------- Tabela ---------- */
+  .tab-topo { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .busca { position: relative; flex: 1 1 240px; max-width: 360px; }
+  .busca input {
+    width: 100%; font: inherit; font-size: 16px;
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink);
+  }
+  .tabela-box { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 14px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  th.num, td.num { text-align: right; }
+  th button {
+    font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  th button .seta { font-size: 11px; opacity: .45; }
+  th[aria-sort="ascending"] .seta, th[aria-sort="descending"] .seta { opacity: 1; color: var(--accent); }
+  td.servico { font-weight: 600; }
+  .nao-ini { color: var(--st-nao-text); font-style: italic; }
+  .pill {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .02em;
+    padding: 1px 8px; border-radius: 999px; margin-left: 8px; white-space: nowrap; vertical-align: 1px;
+  }
+  .pill.concl { background: var(--st-concl-soft); color: var(--st-concl); }
+  .pill.and { background: var(--st-and-soft); color: var(--st-and-text); }
+  .pill.nao { background: var(--st-nao-soft); color: var(--st-nao-text); }
+  tr.detalhe { display: none; }
+  tr.detalhe td { background: var(--bg); font-size: 15px; }
+  .detalhe-itens { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+  .vazio-busca { color: var(--muted); padding: 14px 10px; }
+  .chev { display: none; }
+
+  @media (max-width: 640px) {
+    .painel { padding: 16px; }
+    .col-ab { display: none; }
+    tr.linha { cursor: pointer; }
+    tr.linha:hover td { background: var(--bg); }
+    .chev { display: inline-block; color: var(--muted); margin-right: 6px; transition: transform .2s; }
+    tr.linha[aria-expanded="true"] .chev { transform: rotate(90deg); }
+    tr.detalhe.aberta { display: table-row; }
+    .pill { display: block; width: max-content; margin: 2px 0 0 auto; }
+    .tab-dica { display: block; }
+    .seletor-rotulo { display: none; }
+    .abas { flex-wrap: nowrap; }
+    .aba { padding: 10px 8px; font-size: 15px; white-space: nowrap; }
+  }
+  .tab-dica { display: none; margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+
+  .planob { margin-top: 18px; padding-top: 14px; border-top: 1px solid #E3B4AE; }
+  .planob .titulo-planob { font-weight: 700; font-size: 16px; color: var(--ink); }
+  .btn-arquivo { display: inline-block; position: relative; }
+  .btn-arquivo input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+  .btn-arquivo:focus-within { outline: 3px solid #4C8DB0; outline-offset: 2px; }
+  .colar { margin-top: 12px; }
+  .colar summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  .colar textarea { display: block; width: 100%; margin-top: 8px; font: 13px/1.4 ui-monospace, Consolas, monospace; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+  .causas { margin: 6px 0 0; padding-left: 20px; font-size: 15px; display: flex; flex-direction: column; gap: 4px; }
+  .estado code { font-size: 13px; background: var(--surface); padding: 0 4px; border-radius: 4px; overflow-wrap: anywhere; }
+  .diag { margin-top: 12px; font-size: 14px; color: var(--ink); }
+  .diag summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+  .diag p { margin: 6px 0 0; }
+  .diag-tab { overflow-x: auto; margin-top: 6px; max-width: 100%; }
+  .diag-tab table { font-size: 12px; width: auto; background: var(--surface); }
+  .diag-tab th, .diag-tab td { padding: 3px 6px; border: 1px solid var(--line); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .diag-tab th { background: var(--bg); }
+
+  .avisos { border-color: #E9D29C; background: #FFF9EC; font-size: 14px; }
+  .avisos ul { margin: 6px 0 0; padding-left: 20px; }
+
+  footer .wrap { padding-block: 0 32px; font-size: 13px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation-duration: 3s; }
+    .medidor .arco, .chev { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">Relatório mensal</p>
+      <h1><span data-txt="obra">Obra</span> — Avanço Físico da Obra</h1>
+    </div>
+    <p class="mes">Mês de referência: <strong id="mesRef"></strong></p>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <!-- Estado: carregando / erro -->
+    <section id="estado" class="painel estado" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <div>
+        <p class="titulo">Carregando dados da planilha…</p>
+        <p class="detalhe">Buscando o fechamento mais recente.</p>
+      </div>
+    </section>
+
+    <div id="conteudo" hidden>
+      <div style="display:flex;flex-direction:column;gap:24px">
+
+        <!-- Resumo -->
+        <section class="resumo" aria-label="Resumo do avanço">
+          <div class="painel total">
+            <h2>Avanço total da obra</h2>
+            <div class="medidor" role="img" id="medidor" aria-label="">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="trilho" cx="60" cy="60" r="52" stroke-width="11"></circle>
+                <circle class="arco" id="arco" cx="60" cy="60" r="52" stroke-width="11"
+                        stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
+              </svg>
+              <div class="centro">
+                <div class="valor" id="totalValor">—</div>
+                <div class="rotulo" data-txt="ab">Blocos</div>
+              </div>
+            </div>
+            <p class="nota">O avanço total é ponderado pela representatividade de cada serviço na obra.</p>
+          </div>
+
+          <div class="contagens">
+            <p class="legenda-cards">Situação dos <span id="qtdServicos">—</span> serviços<span id="noConsolidado"> no consolidado dos blocos</span></p>
+            <div class="card concl">
+              <span class="marca" aria-hidden="true"></span>
+              <span class="nome">Concluídos</span>
+              <span class="criterio">Avanço de 99% ou mais</span>
+              <span class="num" id="nConcl">—</span>
+            </div>
+            <div class="card and">
+              <span class="marca" aria-hidden="true"></span>
+              <span class="nome">Em andamento</span>
+              <span class="criterio">Acima de 0% e abaixo de 99%</span>
+              <span class="num" id="nAnd">—</span>
+            </div>
+            <div class="card nao">
+              <span class="marca" aria-hidden="true"></span>
+              <span class="nome">Não iniciados</span>
+              <span class="criterio">0% ou sem medição</span>
+              <span class="num" id="nNao">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Gráficos -->
+        <section class="painel" aria-labelledby="tituloGraf">
+          <div class="graf-topo">
+            <h2 id="tituloGraf">Avanço por serviço</h2>
+            <div class="abas" role="tablist" aria-label="Tipo de gráfico">
+              <button class="aba" role="tab" id="abaServ" aria-selected="true" aria-controls="painelServ">Avanço por serviço</button>
+              <button class="aba" role="tab" id="abaComp" aria-selected="false" aria-controls="painelComp" tabindex="-1" data-txt="axb">Comparativo</button>
+            </div>
+          </div>
+
+          <div id="painelServ" role="tabpanel" aria-labelledby="abaServ">
+            <div class="seletor-linha" style="margin-bottom:14px">
+              <div class="seletor" id="seletorSeries" role="group" aria-label="Dados exibidos">
+                <span class="seletor-rotulo" style="align-self:center">Exibir:</span>
+                <button class="seg" data-serie="c" aria-pressed="true">Consolidado</button>
+              </div>
+              <ul class="legenda" aria-label="Legenda de cores">
+                <li><span class="sw" style="background:var(--st-concl)"></span>Concluído (≥ 99%)</li>
+                <li><span class="sw" style="background:var(--st-and)"></span>Em andamento</li>
+                <li><span class="sw" style="background:var(--st-nao)"></span>Não iniciado</li>
+              </ul>
+            </div>
+            <div class="grafico" id="boxServ"><canvas id="grafServ" role="img" aria-label="Gráfico de barras com o avanço de cada serviço"></canvas></div>
+            <p class="graf-nota">Serviços na ordem da planilha. Passe o dedo ou o mouse sobre a barra para ver o detalhe.</p>
+          </div>
+
+          <div id="painelComp" role="tabpanel" aria-labelledby="abaComp" hidden>
+            <ul class="legenda" id="legendaComp" aria-label="Legenda do comparativo" style="margin-bottom:14px"></ul>
+            <div class="grafico" id="boxComp"><canvas id="grafComp" role="img" aria-label="Gráfico comparando o avanço dos blocos por serviço"></canvas></div>
+            <p class="graf-nota">Serviços sem medição no bloco aparecem como “Não iniciado”.</p>
+          </div>
+        </section>
+
+        <!-- Tabela -->
+        <section class="painel" aria-labelledby="tituloTab">
+          <div class="tab-topo">
+            <h2 id="tituloTab">Detalhamento por serviço</h2>
+            <div class="busca">
+              <label for="busca" class="seletor-rotulo" style="position:absolute;left:-9999px">Buscar serviço</label>
+              <input id="busca" type="search" placeholder="Buscar serviço…" autocomplete="off">
+            </div>
+          </div>
+          <p class="tab-dica" id="tabDica">Toque em um serviço para ver <span data-txt="ab"></span>.</p>
+          <div class="tabela-box">
+            <table>
+              <thead>
+                <tr id="cabTabela">
+                  <th scope="col" data-chave="nome" aria-sort="none"><button type="button">Serviço <span class="seta" aria-hidden="true">↕</span></button></th>
+                  <th scope="col" class="num" id="cabConsolidado" data-chave="c" aria-sort="none"><button type="button">Consolidado <span class="seta" aria-hidden="true">↕</span></button></th>
+                </tr>
+              </thead>
+              <tbody id="corpoTabela"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="avisos" class="painel avisos" hidden>
+          <strong>Avisos de leitura da planilha</strong>
+          <ul id="listaAvisos"></ul>
+          <div id="diagAvisos"></div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    Fonte: planilha de controle de serviços da obra <span data-txt="obra"></span> (Google Sheets). Os percentuais são exibidos exatamente como constam na planilha. <span id="origemDados"></span>
+    <div id="diagRodape"></div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<script>
+// A configuração da obra (NOME_OBRA, CSV_URL, MES_REFERENCIA, BLOCOS_OBRA,
+// CABECALHO_CONSOLIDADO) fica no início do arquivo, dentro do <head>.
+
+const LIMITE_CONCLUIDO = 99; // ≥ 99% = concluído
+
+// Serviços esperados, usados só para localizar a coluna de nomes de cada bloco.
+// A ordem exibida é sempre a da planilha.
+const SERVICOS_ESPERADOS = [
+  "Estrutura", "Marc. Alvenaria", "Furos p/ instalações", "Drywall", "Contrapiso",
+  "Alvenaria", "Infra Elétrica / VDI", "Infra Hidráulica", "Infra Ar Condic.", "Chapisco",
+  "Contramarcos", "Emboço", "Fiação Elét./VDI", "Forro", "Impermeabilização",
+  "Revest. Interno", "Emassamento", "1ª demão", "Esq. Metálicas", "Balcões",
+  "Louças", "Esq. Madeira", "2ª demão", "Acab. Elétricos", "Acab. Hidráulicos",
+  "Eq. contra incêndio", "Limpeza", "Vistoria", "Fachada",
+];
+
+const COR = {
+  ink: "#1C2A30", muted: "#56646B", line: "#E6EAE9",
+  concl: "#2E7D4F", and: "#C27A0E", nao: "#A3ADB2",
+};
+// Cores dos blocos no comparativo, na ordem de BLOCOS_OBRA.
+const COR_BLOCOS = ["#2F4F7F", "#7FB0C4", "#8C6BB1", "#B5835A"];
+const FONTE_TEXTO = '"Source Sans 3", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+/* ---------- Utilidades ---------- */
+
+const norm = s => String(s ?? "")
+  .normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .toLowerCase().replace(/[\s ]+/g, " ").trim();
+
+const chaveServico = s => norm(s).replace(/[^a-z0-9]+/g, "");
+// Texto só com letras/números separados por um espaço (ignora traços, pontos, quebras de linha).
+const compacto = s => norm(s).replace(/[^a-z0-9]+/g, " ").trim();
+const letraColuna = c => { let t = ""; c++; while (c > 0) { const m = (c - 1) % 26; t = String.fromCharCode(65 + m) + t; c = Math.floor((c - 1) / 26); } return t; };
+const posTexto = p => `linha ${p.r + 1}, coluna ${letraColuna(p.c)}`;
+
+// Cabeçalhos procurados na aba (comparação sem acentos e sem diferenciar maiúsculas).
+// Primeiro tenta o texto completo da configuração; se não achar, aceita variações
+// (ex.: "Obra - Bloco A", "BLOCO A", "Avanço dos blocos", "Consolidado").
+const padrao = txt => {
+  const s = compacto(txt);
+  if (!s) return /(?!)/; // texto vazio na configuração: não procura nada
+  return new RegExp("(^| )" + s.replace(/(^| )avanco blocos( |$)/, "$1avanco (dos )?blocos$2") + "( |$)");
+};
+// Obra de um bloco só sem coluna consolidada: o próprio bloco faz o papel do consolidado.
+const SEM_CONSOLIDADO = BLOCOS_OBRA.length === 1 && !String(CABECALHO_CONSOLIDADO).trim();
+// Chaves internas: "b0", "b1", "b2"… para os blocos exibidos e "c" para o consolidado.
+const KB = SEM_CONSOLIDADO ? [] : BLOCOS_OBRA.map((_, i) => "b" + i);
+const NOMES = { c: SEM_CONSOLIDADO ? BLOCOS_OBRA[0].nome : "Consolidado" };
+const BLOCOS = {};
+KB.forEach((k, i) => {
+  NOMES[k] = BLOCOS_OBRA[i].nome;
+  BLOCOS[k] = { titulo: BLOCOS_OBRA[i].cabecalho, re: [padrao(BLOCOS_OBRA[i].cabecalho), padrao(BLOCOS_OBRA[i].nome)] };
+});
+BLOCOS.c = SEM_CONSOLIDADO
+  ? { titulo: BLOCOS_OBRA[0].cabecalho, re: [padrao(BLOCOS_OBRA[0].cabecalho), padrao(BLOCOS_OBRA[0].nome)] }
+  : { titulo: CABECALHO_CONSOLIDADO, re: [padrao(CABECALHO_CONSOLIDADO), /(^| )avanco (dos )?blocos( |$)/, /(^| )consolidado( |$)/] };
+const TODAS = [...KB, "c"];
+// "Bloco A", "Bloco A e Bloco B", "Bloco A, Bloco B e Bloco C"
+const listaNomes = nomes => nomes.length > 1 ? nomes.slice(0, -1).join(", ") + " e " + nomes[nomes.length - 1] : (nomes[0] || "");
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Leitor de CSV (RFC 4180): aspas, vírgulas dentro de aspas, quebras de linha.
+// Separador detectado: vírgula (CSV do Google), ponto e vírgula (CSV do Excel) ou tab (células copiadas).
+function detectarSeparador(texto) {
+  const amostra = texto.split(/\r?\n/).slice(0, 30).join("\n").replace(/"[^"]*"/g, "");
+  const n = sep => amostra.split(sep).length - 1;
+  return ["\t", ";", ","].reduce((m, sep) => n(sep) > n(m) ? sep : m, ",");
+}
+
+function parseCSV(texto) {
+  const linhas = [];
+  let linha = [], campo = "", aspas = false;
+  texto = texto.replace(/^\uFEFF/, "");
+  const sep = detectarSeparador(texto);
+  for (let i = 0; i < texto.length; i++) {
+    const ch = texto[i];
+    if (aspas) {
+      if (ch === '"') {
+        if (texto[i + 1] === '"') { campo += '"'; i++; }
+        else aspas = false;
+      } else campo += ch;
+    } else if (ch === '"') aspas = true;
+    else if (ch === sep) { linha.push(campo); campo = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && texto[i + 1] === "\n") i++;
+      linha.push(campo); linhas.push(linha); linha = []; campo = "";
+    } else campo += ch;
+  }
+  if (campo !== "" || linha.length) { linha.push(campo); linhas.push(linha); }
+  return linhas;
+}
+
+// Converte "98,5%", "98,46%", "0,00%", "1%" em número (pontos percentuais).
+function lerPercentual(bruto) {
+  const texto = String(bruto ?? "").trim();
+  let s = texto.replace(/[\s ]/g, "");
+  if (s === "" || /^[-–—]$/.test(s)) return { vazio: true, texto: "" };
+  s = s.replace(/%$/, "");
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", ".");
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return { invalido: true, texto };
+  return { valor: parseFloat(s), texto };
+}
+
+const fmtPct = v => v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + "%";
+
+// Texto a exibir: o valor como está na planilha (acrescenta % se faltar).
+function textoExibicao(item) {
+  if (!item || item.valor == null) return null;
+  return /%$/.test(item.texto) ? item.texto.replace(/\s+%$/, "%") : fmtPct(item.valor);
+}
+
+function status(v) {
+  if (v == null || v <= 0) return "nao";
+  if (v >= LIMITE_CONCLUIDO) return "concl";
+  return "and";
+}
+const NOME_STATUS = { concl: "Concluído", and: "Em andamento", nao: "Não iniciado" };
+
+/* ---------- Leitura da aba ---------- */
+
+function cel(linhas, r, c) { return (linhas[r] && linhas[r][c] != null) ? linhas[r][c] : ""; }
+
+function acharCabecalho(linhas, padroes) {
+  for (const re of padroes)
+    for (let r = 0; r < linhas.length; r++)
+      for (let c = 0; c < linhas[r].length; c++)
+        if (re.test(compacto(linhas[r][c]))) return { r, c, texto: String(linhas[r][c]).trim() };
+  return null;
+}
+
+const ehTotal = nome => /^(avanco )?total( |$)/.test(compacto(nome));
+const ehRotuloColuna = nome => /^(servicos?|descricao|item|atividade)s?$/.test(norm(nome));
+
+function lerBloco(linhas, pos, avisos, titulo, outrasColunas) {
+  const esperados = new Set(SERVICOS_ESPERADOS.map(chaveServico));
+  const fim = Math.min(linhas.length, pos.r + 80);
+
+  // Coluna de nomes: a que tiver mais serviços conhecidos perto do cabeçalho.
+  let colServ = pos.c, melhor = -1;
+  for (const c of [pos.c, pos.c - 1, pos.c + 1, pos.c - 2, pos.c + 2]) {
+    if (c < 0) continue;
+    let n = 0;
+    for (let r = pos.r + 1; r < fim; r++) if (esperados.has(chaveServico(cel(linhas, r, c)))) n++;
+    if (n > melhor) { melhor = n; colServ = c; }
+  }
+  // Coluna de %: à direita dos nomes, até o início do próximo bloco (nomes mesclados em
+  // várias colunas empurram o % para mais longe). Fica a que tiver mais percentuais; no empate, a mais próxima.
+  const proxBloco = outrasColunas.filter(c => c > colServ);
+  const limite = Math.min(colServ + 10, ...proxBloco.map(c => c - 1));
+  const linhasServ = [];
+  for (let r = pos.r + 1; r < fim; r++) if (cel(linhas, r, colServ).trim()) linhasServ.push(r);
+  let colPct = colServ + 1, melhorPct = 0;
+  for (let c = colServ + 1; c <= Math.max(limite, colServ + 1); c++) {
+    let n = 0;
+    for (const r of linhasServ) if (lerPercentual(cel(linhas, r, c)).valor != null) n++;
+    if (n > melhorPct) { melhorPct = n; colPct = c; }
+  }
+  // Percentual exportado como fração (0,4057 em vez de 40,57%): converte para pontos percentuais.
+  const valoresCol = linhasServ.map(r => lerPercentual(cel(linhas, r, colPct)));
+  const comSimbolo = valoresCol.some(v => v.valor != null && /%/.test(v.texto));
+  const fracao = !comSimbolo && valoresCol.some(v => v.valor != null && v.valor > 0 && v.valor < 1) &&
+    valoresCol.every(v => v.valor == null || v.valor <= 1);
+  const ajustar = p => (fracao && p.valor != null) ? { valor: p.valor * 100, texto: fmtPct(Math.round(p.valor * 10000) / 100) } : p;
+  if (!melhorPct) avisos.push(`${titulo}: nenhum percentual encontrado nas colunas ${letraColuna(colServ + 1)} a ${letraColuna(Math.max(limite, colServ + 1))}, à direita dos serviços (coluna ${letraColuna(colServ)}).`);
+
+  const itens = [];
+  let total = null, vazias = 0;
+  for (let r = pos.r + 1; r < linhas.length; r++) {
+    const nome = cel(linhas, r, colServ).trim();
+    if (!nome) {
+      if (itens.length && ++vazias >= 3) break;
+      continue;
+    }
+    vazias = 0;
+    const p = ajustar(lerPercentual(cel(linhas, r, colPct)));
+    if (ehTotal(nome)) { total = p; break; }
+    if (ehRotuloColuna(nome)) continue;
+    if (!itens.length && p.invalido) continue; // linha de títulos ("Serviço", "%")
+    if (p.invalido) avisos.push(`${titulo}: valor “${p.texto}” do serviço “${nome}” não foi reconhecido como percentual.`);
+    itens.push({ nome, chave: chaveServico(nome), valor: p.valor ?? null, texto: p.texto ?? "", vazio: !!p.vazio });
+  }
+  return { itens, total, colServ, colPct, nPct: melhorPct, fracao };
+}
+
+function interpretar(linhas) {
+  const faltando = [];
+  const pos = {};
+  if (!BLOCOS_OBRA.length) {
+    throw new Error("Nenhum bloco configurado. Preencha BLOCOS_OBRA no bloco de configuração no início deste arquivo.");
+  }
+  if (BLOCOS_OBRA.length > 1 && !String(CABECALHO_CONSOLIDADO).trim()) {
+    throw new Error("Com mais de um bloco, é preciso informar CABECALHO_CONSOLIDADO no bloco de configuração no início deste arquivo.");
+  }
+  for (const k of TODAS) {
+    pos[k] = acharCabecalho(linhas, BLOCOS[k].re);
+    if (!pos[k]) faltando.push(BLOCOS[k].titulo);
+  }
+  const achados = TODAS.filter(k => pos[k])
+    .map(k => `“${BLOCOS[k].titulo}” → célula “${pos[k].texto}” (${posTexto(pos[k])})`);
+  if (faltando.length) {
+    const e = new Error(`Não encontrei na planilha o(s) cabeçalho(s): ${faltando.map(t => `“${t}”`).join(", ")}. ` +
+      "Confira se o link é da aba certa (na opção Publicar na Web, escolha a aba, não “Documento inteiro”) e se o texto do cabeçalho está igual.");
+    e.diagnostico = diagnostico(linhas, achados);
+    throw e;
+  }
+  const avisos = [];
+  const cols = TODAS.map(k => pos[k].c);
+  const lidos = {};
+  for (const k of TODAS) lidos[k] = lerBloco(linhas, pos[k], avisos, NOMES[k], cols);
+  const C = lidos.c;
+  for (const [nome, bl] of TODAS.map(k => [NOMES[k], lidos[k]]))
+    achados.push(`${nome}: serviços na coluna ${letraColuna(bl.colServ)} (${bl.itens.length}), percentuais na coluna ${letraColuna(bl.colPct)} (${bl.nPct} valores${bl.fracao ? ", convertidos de fração" : ""})`);
+  if (!C.itens.length) {
+    const e = new Error(`O cabeçalho do consolidado foi encontrado (${posTexto(pos.c)}), mas não há serviços logo abaixo dele.`);
+    e.diagnostico = diagnostico(linhas, achados);
+    throw e;
+  }
+  // "Avanço total" fora da coluna de serviços: procura na aba inteira, à direita do rótulo.
+  if (!C.total || C.total.valor == null) {
+    busca: for (let r = 0; r < linhas.length; r++)
+      for (let c = 0; c < linhas[r].length; c++)
+        if (/^avanco total( |$)/.test(compacto(linhas[r][c])))
+          for (let d = c + 1; d <= c + 4; d++) {
+            const p = lerPercentual(cel(linhas, r, d));
+            if (p.valor != null) { C.total = p; break busca; }
+          }
+  }
+
+  const mapa = bloco => new Map(bloco.itens.map(i => [i.chave, i]));
+  const mapas = {};
+  for (const k of KB) mapas[k] = mapa(lidos[k]);
+  const servicos = C.itens.map(c => {
+    const s = { nome: c.nome, c };
+    for (const k of KB) {
+      s[k] = mapas[k].get(c.chave) || null;
+      if (!s[k]) avisos.push(`“${c.nome}” não foi encontrado no ${NOMES[k]}.`);
+    }
+    return s;
+  });
+  const chavesC = new Set(C.itens.map(i => i.chave));
+  for (const [nomeBloco, bloco] of KB.map(k => [NOMES[k], lidos[k]]))
+    for (const i of bloco.itens)
+      if (!chavesC.has(i.chave)) avisos.push(`“${i.nome}” aparece no ${nomeBloco} mas não no consolidado.`);
+
+  if (!C.total || C.total.valor == null) avisos.push("A linha “Avanço total” não foi encontrada no consolidado.");
+  return { servicos, total: C.total, avisos, diag: diagnostico(linhas, achados) };
+}
+
+/* ---------- Estado da página ---------- */
+
+const $ = id => document.getElementById(id);
+
+// Resumo do que foi lido, para mostrar na tela de erro.
+function diagnostico(linhas, achados) {
+  const nCols = Math.max(0, ...linhas.map(l => l.length));
+  const ultimaUtil = linhas.reduce((u, l, i) => l.some(c => String(c).trim()) ? i : u, -1);
+  const maxR = Math.min(linhas.length, 15), maxC = Math.min(nCols, 26);
+  let tab = "<tr><th></th>" + Array.from({ length: maxC }, (_, c) => `<th>${letraColuna(c)}</th>`).join("") + "</tr>";
+  for (let r = 0; r < maxR; r++)
+    tab += `<tr><th>${r + 1}</th>` + Array.from({ length: maxC }, (_, c) => `<td>${escapeHtml(cel(linhas, r, c))}</td>`).join("") + "</tr>";
+  return `<details class="diag"><summary>Ver o que foi lido da planilha</summary>
+    <p>Linhas recebidas: ${ultimaUtil + 1} com conteúdo · Colunas: ${nCols}</p>
+    <p>Cabeçalhos e colunas encontrados:</p><ul>${achados.length ? achados.map(a => `<li>${escapeHtml(a)}</li>`).join("") : "<li>nenhum</li>"}</ul>
+    <p>Primeiras ${maxR} linhas e ${maxC} colunas:</p>
+    <div class="diag-tab"><table>${tab}</table></div></details>`;
+}
+
+function mostrarErro(titulo, detalhe, podeTentar, diagHtml) {
+  const el = $("estado");
+  el.className = "painel estado erro";
+  el.hidden = false;
+  el.innerHTML = `<span class="icone" aria-hidden="true">!</span>
+    <div style="min-width:0;flex:1"><p class="titulo">${escapeHtml(titulo)}</p>
+    <p class="detalhe">${escapeHtml(detalhe)}</p>
+    ${diagHtml || ""}
+    ${podeTentar ? '<button class="btn" type="button" id="tentar">Tentar novamente</button>' : ""}
+    <div class="planob">
+      <p class="titulo-planob">Plano B: carregar os dados sem o link</p>
+      <p class="detalhe">Na planilha, com a aba dos blocos aberta: <strong>Arquivo &gt; Fazer download &gt; Valores separados por vírgula (.csv)</strong>. Depois escolha o arquivo baixado:</p>
+      <label class="btn btn-arquivo">Escolher arquivo CSV<input type="file" id="arquivoCsv" accept=".csv,.tsv,.txt,text/csv,text/plain"></label>
+      <details class="colar">
+        <summary>Ou colar os dados</summary>
+        <p class="detalhe">Selecione todas as células da aba (Ctrl+A), copie (Ctrl+C) e cole aqui (Ctrl+V).</p>
+        <textarea id="textoCsv" rows="6" spellcheck="false" aria-label="Dados copiados da planilha"></textarea>
+        <button class="btn" type="button" id="usarTexto">Usar dados colados</button>
+      </details>
+    </div></div>`;
+  $("conteudo").hidden = true;
+  if (podeTentar) $("tentar").addEventListener("click", carregar);
+  $("arquivoCsv").addEventListener("change", e => lerArquivo(e.target.files[0]));
+  $("usarTexto").addEventListener("click", () => {
+    const t = $("textoCsv").value;
+    if (t.trim()) processarTexto(t, "dados colados na página");
+  });
+}
+
+// Lê o CSV escolhido no computador (nada é enviado para fora do navegador).
+function lerArquivo(arq, codificacao = "utf-8") {
+  if (!arq) return;
+  const leitor = new FileReader();
+  leitor.onload = () => {
+    const t = String(leitor.result);
+    // Arquivo salvo pelo Excel pode vir em Windows-1252: relê se aparecerem caracteres inválidos.
+    if (t.includes("\uFFFD") && codificacao === "utf-8") return lerArquivo(arq, "windows-1252");
+    processarTexto(t, `arquivo “${arq.name}”`);
+  };
+  leitor.onerror = () => mostrarErro("Não foi possível abrir o arquivo.", "Tente escolher o arquivo novamente.", true);
+  leitor.readAsText(arq, codificacao);
+}
+
+function mostrarCarregando() {
+  const el = $("estado");
+  el.className = "painel estado";
+  el.hidden = false;
+  el.innerHTML = `<div class="spinner" aria-hidden="true"></div>
+    <div><p class="titulo">Carregando dados da planilha…</p>
+    <p class="detalhe">Buscando o fechamento mais recente.</p></div>`;
+}
+
+let DADOS = null;
+let serieAtual = "c";
+let ordem = { chave: null, dir: 1 };
+const graficos = {};
+
+async function carregar() {
+  mostrarCarregando();
+  if (!CSV_URL || /COLE AQUI/i.test(CSV_URL) || !/^https?:\/\//i.test(CSV_URL) && !/\.csv$/i.test(CSV_URL)) {
+    mostrarErro("Link da planilha não configurado.",
+      "Cole o link CSV da aba publicada na constante CSV_URL, no bloco de configuração no início deste arquivo.", false);
+    return;
+  }
+  // "&amp;" aparece quando o link é copiado de um e-mail ou página; o correto é "&".
+  let url = CSV_URL.trim().replace(/&amp;/g, "&");
+  // Link "pubhtml" (página publicada) → mesmo link em formato CSV.
+  if (/\/pubhtml/.test(url)) url = url.replace("/pubhtml", "/pub").replace(/[?&]output=[^&]*/, "") + (url.includes("?") ? "&" : "?") + "output=csv";
+  url = url.replace("pub&output", "pub?output");
+  // Link publicado sem formato definido → força CSV.
+  if (/docs\.google\.com\/spreadsheets\/d\/e\/.+\/pub(\?|$)/.test(url) && !/[?&]output=csv/.test(url))
+    url = url.replace(/[?&]output=[^&]*/, "") + (url.includes("?") ? "&" : "?") + "output=csv";
+  if (/docs\.google\.com\/spreadsheets\/d\/(?!e\/)/.test(url)) {
+    mostrarErro("Este é o link de edição da planilha, não o link publicado.",
+      "Use Arquivo > Compartilhar > Publicar na Web, escolha a aba e o formato CSV, e copie o link gerado (ele contém “/pub?” e “output=csv”).", false);
+    return;
+  }
+  // Tentativas: o link como está e, como reserva, o mesmo link sem "single=true".
+  const tentativas = [url];
+  const semSingle = url.replace(/[?&]single=true/, m => m[0] === "?" ? "?" : "").replace("?&", "?");
+  if (semSingle !== url) tentativas.push(semSingle);
+  let texto, ultimoErro;
+  for (const u of tentativas) {
+    try {
+      const resp = await fetch(u);
+      if (!resp.ok) throw new Error(`O servidor respondeu com o código ${resp.status}.`);
+      texto = await resp.text();
+      break;
+    } catch (e) { ultimoErro = e; }
+  }
+  if (texto === undefined) {
+    const e = ultimoErro;
+    const emPrevia = window.self !== window.top || !/^(https?|file):$/.test(location.protocol);
+    const local = location.protocol === "file:";
+    const causas = (local ? `<p class="detalhe"><strong>A página foi aberta direto do computador (endereço começando com file://).</strong> Alguns navegadores bloqueiam a leitura da planilha nesse modo. Para enviar ao cliente com atualização automática, a página precisa estar hospedada em um endereço https (por exemplo Netlify ou GitHub Pages). Enquanto isso, use o plano B abaixo.</p>` : "") +
+      (emPrevia ? `<p class="detalhe"><strong>Esta página está aberta dentro de uma prévia (janela incorporada), que normalmente bloqueia o acesso à planilha. Baixe o arquivo .html e abra com dois cliques no computador.</strong></p>` : "") +
+      `<p class="detalhe">Causas mais comuns:</p><ul class="causas">
+      <li><strong>Página aberta pela prévia do Claude.</strong> A prévia bloqueia o acesso a sites externos. Baixe o arquivo .html e abra no navegador (Chrome, Edge).</li>
+      <li><strong>Link errado.</strong> Precisa ser o link de “Publicar na Web” em formato CSV: começa com <code>https://docs.google.com/spreadsheets/d/e/</code> e termina com <code>output=csv</code>. O link do navegador ao editar a planilha (com <code>/edit</code>) não funciona.</li>
+      <li><strong>Aba não publicada.</strong> Em Arquivo &gt; Compartilhar &gt; Publicar na Web, confira se a aba certa está publicada.</li>
+      <li><strong>Publicação restrita.</strong> Em contas Google de empresa, a publicação pode estar limitada a quem faz login na organização. Teste: abra o link usado (abaixo) numa aba nova. Se aparecer texto com vírgulas ou baixar um arquivo, o link está certo; se pedir login, a publicação está restrita.</li>
+      <li><strong>Bloqueio da rede ou do navegador.</strong> Rede corporativa ou extensão de bloqueio de anúncios podem impedir o acesso ao Google.</li>
+    </ul><p class="detalhe">Link usado: <code>${escapeHtml(url)}</code><br>Detalhe técnico: ${escapeHtml(e.message)}</p>`;
+    mostrarErro("Não foi possível carregar a planilha.",
+      "O navegador não conseguiu acessar o link da planilha.", true, causas);
+    return;
+  }
+  if (/^\s*<(!doctype|html)/i.test(texto)) {
+    mostrarErro("O link não retornou um arquivo CSV.",
+      "O endereço devolveu uma página da web. Publique a aba em formato CSV e use o link gerado na opção “Publicar na Web”.", true);
+    return;
+  }
+  await processarTexto(texto, "planilha publicada no Google Sheets");
+}
+
+async function processarTexto(texto, origem) {
+  try {
+    DADOS = interpretar(parseCSV(texto));
+  } catch (e) {
+    mostrarErro("Não foi possível ler a planilha.", e.message, true, e.diagnostico);
+    return;
+  }
+  if (window.Chart === undefined) {
+    mostrarErro("Não foi possível carregar a biblioteca de gráficos.",
+      "Verifique a conexão com a internet e tente novamente.", true);
+    return;
+  }
+  try { await document.fonts.ready; } catch (_) {}
+  $("estado").hidden = true;
+  $("conteudo").hidden = false;
+  $("origemDados").textContent = `Dados lidos de: ${origem}.`;
+  renderizar();
+}
+
+/* ---------- Renderização ---------- */
+
+function renderizar() {
+  const { servicos, total, avisos } = DADOS;
+
+  // Indicador principal
+  const temTotal = total && total.valor != null;
+  const txtTotal = temTotal ? textoExibicao(total) : "—";
+  $("totalValor").textContent = txtTotal;
+  $("medidor").setAttribute("aria-label", `Avanço total: ${temTotal ? txtTotal : "não informado"}`);
+  const circ = 2 * Math.PI * 52;
+  const frac = temTotal ? Math.max(0, Math.min(100, total.valor)) / 100 : 0;
+  requestAnimationFrame(() => { $("arco").style.strokeDashoffset = String(circ * (1 - frac)); });
+
+  // Contagens (consolidado)
+  const cont = { concl: 0, and: 0, nao: 0 };
+  servicos.forEach(s => cont[status(s.c.valor)]++);
+  $("qtdServicos").textContent = servicos.length;
+  $("nConcl").textContent = cont.concl;
+  $("nAnd").textContent = cont.and;
+  $("nNao").textContent = cont.nao;
+
+  desenharServicos();
+  if (!$("painelComp").hidden) desenharComparativo();
+  desenharTabela();
+
+  $("avisos").hidden = !avisos.length;
+  $("listaAvisos").innerHTML = avisos.map(a => `<li>${escapeHtml(a)}</li>`).join("");
+  $("diagAvisos").innerHTML = avisos.length ? DADOS.diag : "";
+  $("diagRodape").innerHTML = avisos.length ? "" : DADOS.diag.replace("Ver o que foi lido da planilha", "Detalhes técnicos da leitura");
+}
+
+const estreito = () => window.matchMedia("(max-width: 640px)").matches;
+
+// Plugin: escreve o valor no fim de cada barra.
+const rotulosValor = {
+  id: "rotulosValor",
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    const tam = estreito() ? 11 : 12;
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (meta.hidden || !ds.rotulos) return;
+      meta.data.forEach((barra, i) => {
+        const t = ds.rotulos[i];
+        if (!t) return;
+        ctx.save();
+        ctx.font = `600 ${tam}px ${FONTE_TEXTO}`;
+        ctx.fillStyle = ds.rotulos.vazio && ds.rotulos.vazio[i] ? COR.muted : COR.ink;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(t, barra.x + 5, barra.y);
+        ctx.restore();
+      });
+    });
+  },
+};
+
+function opcoesBase(qtdLinhas) {
+  const tam = estreito() ? 11 : 13;
+  return {
+    indexAxis: "y",
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 500 },
+    layout: { padding: { right: estreito() ? 76 : 88 } },
+    scales: {
+      x: {
+        min: 0, max: 100, position: "top",
+        ticks: { stepSize: estreito() ? 50 : 25, maxRotation: 0, color: COR.muted, font: { family: FONTE_TEXTO, size: 12 }, callback: v => v + "%" },
+        grid: { color: COR.line },
+        border: { display: false },
+      },
+      y: {
+        ticks: { color: COR.ink, font: { family: FONTE_TEXTO, size: tam }, autoSkip: false },
+        grid: { display: false },
+        border: { color: COR.line },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: COR.ink,
+        titleFont: { family: FONTE_TEXTO, size: 14, weight: "700" },
+        bodyFont: { family: FONTE_TEXTO, size: 13 },
+        padding: 10,
+      },
+    },
+  };
+}
+
+function valorTexto(item) {
+  if (!item) return "Sem dado";
+  if (item.valor == null) return "Não iniciado";
+  return textoExibicao(item);
+}
+
+function desenharServicos() {
+  const { servicos } = DADOS;
+  const itens = servicos.map(s => s[serieAtual]);
+  const valores = itens.map(i => (i && i.valor != null) ? Math.max(0, i.valor) : 0);
+  const sts = itens.map(i => status(i ? i.valor : null));
+  const rotulos = itens.map(valorTexto);
+  rotulos.vazio = itens.map(i => !i || i.valor == null);
+  const nomeSerie = NOMES[serieAtual];
+
+  $("boxServ").style.height = (servicos.length * (estreito() ? 26 : 28) + 50) + "px";
+  if (graficos.serv) graficos.serv.destroy();
+  const op = opcoesBase(servicos.length);
+  op.plugins.tooltip.callbacks = {
+    label: ctx => ` ${nomeSerie}: ${rotulos[ctx.dataIndex]}`,
+    afterLabel: ctx => ` Situação: ${NOME_STATUS[sts[ctx.dataIndex]]}`,
+  };
+  graficos.serv = new Chart($("grafServ"), {
+    type: "bar",
+    data: {
+      labels: servicos.map(s => s.nome),
+      datasets: [{
+        label: nomeSerie,
+        data: valores,
+        rotulos,
+        backgroundColor: sts.map(s => COR[s]),
+        borderRadius: 3,
+        barPercentage: 0.9,
+        categoryPercentage: 0.78,
+        minBarLength: 0,
+      }],
+    },
+    options: op,
+    plugins: [rotulosValor],
+  });
+  $("grafServ").setAttribute("aria-label", `Gráfico de barras com o avanço de cada serviço: ${nomeSerie}`);
+}
+
+function desenharComparativo() {
+  const { servicos } = DADOS;
+  const montar = (k, cor, label) => {
+    const itens = servicos.map(s => s[k]);
+    const rotulos = itens.map(valorTexto);
+    rotulos.vazio = itens.map(i => !i || i.valor == null);
+    return {
+      label, rotulos,
+      data: itens.map(i => (i && i.valor != null) ? Math.max(0, i.valor) : 0),
+      backgroundColor: cor, borderRadius: 2,
+      barPercentage: 0.88, categoryPercentage: 0.82,
+    };
+  };
+  const conjuntos = KB.map((k, i) => montar(k, COR_BLOCOS[i % COR_BLOCOS.length], NOMES[k]));
+
+  // Altura por serviço: 42/46 px com dois blocos, proporcional ao número de barras.
+  $("boxComp").style.height = (servicos.length * (KB.length * (estreito() ? 19 : 21) + 4) + 50) + "px";
+  if (graficos.comp) graficos.comp.destroy();
+  const op = opcoesBase(servicos.length);
+  op.plugins.tooltip.callbacks = {
+    label: ctx => {
+      const ds = ctx.dataset;
+      const item = servicos[ctx.dataIndex][KB[ctx.datasetIndex]];
+      return ` ${ds.label}: ${ds.rotulos[ctx.dataIndex]} (${NOME_STATUS[status(item ? item.valor : null)]})`;
+    },
+  };
+  graficos.comp = new Chart($("grafComp"), {
+    type: "bar",
+    data: { labels: servicos.map(s => s.nome), datasets: conjuntos },
+    options: op,
+    plugins: [rotulosValor],
+  });
+}
+
+function celulaValor(item) {
+  if (!item) return '<span class="nao-ini">Sem dado</span>';
+  if (item.valor == null) return '<span class="nao-ini">Não iniciado</span>';
+  return escapeHtml(textoExibicao(item));
+}
+
+function desenharTabela() {
+  const termo = norm($("busca").value);
+  let linhas = DADOS.servicos.map((s, i) => ({ ...s, i }));
+  if (termo) linhas = linhas.filter(s => norm(s.nome).includes(termo));
+
+  if (ordem.chave) {
+    const val = (s, k) => k === "nome" ? null : (s[k] && s[k].valor != null ? s[k].valor : -1);
+    linhas.sort((x, y) => {
+      const r = ordem.chave === "nome"
+        ? x.nome.localeCompare(y.nome, "pt-BR", { sensitivity: "base", numeric: true })
+        : val(x, ordem.chave) - val(y, ordem.chave);
+      return (r || x.i - y.i) * (r ? ordem.dir : 1);
+    });
+  }
+
+  document.querySelectorAll("th[data-chave]").forEach(th => {
+    const ativo = th.dataset.chave === ordem.chave;
+    th.setAttribute("aria-sort", ativo ? (ordem.dir > 0 ? "ascending" : "descending") : "none");
+    th.querySelector(".seta").textContent = ativo ? (ordem.dir > 0 ? "▲" : "▼") : "↕";
+  });
+
+  const corpo = $("corpoTabela");
+  if (!linhas.length) {
+    corpo.innerHTML = `<tr><td colspan="${KB.length + 2}" class="vazio-busca">Nenhum serviço encontrado para “${escapeHtml($("busca").value)}”.</td></tr>`;
+    return;
+  }
+  corpo.innerHTML = linhas.map(s => {
+    const st = status(s.c.valor);
+    return `<tr class="linha" data-i="${s.i}" aria-expanded="false" tabindex="0">
+        <td class="servico"><span class="chev" aria-hidden="true">›</span>${escapeHtml(s.nome)}</td>
+        ${KB.map(k => `<td class="num col-ab">${celulaValor(s[k])}</td>`).join("")}
+        <td class="num">${celulaValor(s.c)}<span class="pill ${st}">${NOME_STATUS[st]}</span></td>
+      </tr>
+      <tr class="detalhe" data-det="${s.i}">
+        <td colspan="${KB.length + 2}"><div class="detalhe-itens">
+          ${KB.map(k => `<span>${escapeHtml(NOMES[k])}: <strong>${celulaValor(s[k])}</strong></span>`).join("")}
+        </div></td>
+      </tr>`;
+  }).join("");
+}
+
+/* ---------- Interações ---------- */
+
+// Partes da página que dependem da configuração da obra (nomes e quantidade de blocos).
+const TEXTOS = { obra: NOME_OBRA, ab: listaNomes(BLOCOS_OBRA.map(b => b.nome)), axb: KB.map(k => NOMES[k]).join(" x ") };
+document.querySelectorAll("[data-txt]").forEach(el => { el.textContent = TEXTOS[el.dataset.txt]; });
+// Com três blocos ou mais, a aba recebe um nome curto para caber na largura do celular.
+if (KB.length > 2) $("abaComp").textContent = "Comparativo";
+KB.forEach((k, i) => {
+  const btn = document.createElement("button");
+  btn.className = "seg"; btn.dataset.serie = k; btn.setAttribute("aria-pressed", "false");
+  btn.textContent = NOMES[k];
+  $("seletorSeries").appendChild(btn);
+
+  const li = document.createElement("li");
+  li.innerHTML = `<span class="sw" style="background:${COR_BLOCOS[i % COR_BLOCOS.length]}"></span>${escapeHtml(NOMES[k])}`;
+  $("legendaComp").appendChild(li);
+
+  const th = document.createElement("th");
+  th.scope = "col"; th.className = "num col-ab"; th.dataset.chave = k; th.setAttribute("aria-sort", "none");
+  th.innerHTML = `<button type="button">${escapeHtml(NOMES[k])} <span class="seta" aria-hidden="true">↕</span></button>`;
+  $("cabTabela").insertBefore(th, $("cabConsolidado"));
+});
+// Sem blocos separados (um bloco, sem consolidado) não há o que escolher nem detalhar.
+$("seletorSeries").hidden = !KB.length;
+$("tabDica").hidden = !KB.length;
+$("noConsolidado").hidden = !KB.length;
+if (SEM_CONSOLIDADO) $("cabConsolidado").querySelector("button").firstChild.textContent = NOMES.c + " ";
+// Comparativo só faz sentido com dois blocos ou mais.
+$("abaComp").hidden = KB.length < 2;
+
+$("mesRef").textContent = /^\s*\[.*\]\s*$/.test(MES_REFERENCIA) || !MES_REFERENCIA.trim()
+  ? "a definir" : MES_REFERENCIA;
+
+document.querySelectorAll(".seg").forEach(btn => btn.addEventListener("click", () => {
+  serieAtual = btn.dataset.serie;
+  document.querySelectorAll(".seg").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+  if (DADOS) desenharServicos();
+}));
+
+function selecionarAba(aba) {
+  const comp = aba === $("abaComp");
+  $("abaServ").setAttribute("aria-selected", String(!comp));
+  $("abaComp").setAttribute("aria-selected", String(comp));
+  $("abaServ").tabIndex = comp ? -1 : 0;
+  $("abaComp").tabIndex = comp ? 0 : -1;
+  $("painelServ").hidden = comp;
+  $("painelComp").hidden = !comp;
+  $("tituloGraf").textContent = comp ? `Comparativo ${TEXTOS.axb}` : "Avanço por serviço";
+  // Os gráficos são redesenhados ao aparecer: um canvas criado escondido fica sem tamanho.
+  if (DADOS) (comp ? desenharComparativo : desenharServicos)();
+}
+[$("abaServ"), $("abaComp")].forEach(aba => {
+  aba.addEventListener("click", () => selecionarAba(aba));
+  aba.addEventListener("keydown", e => {
+    if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !$("abaComp").hidden) {
+      const outra = aba === $("abaServ") ? $("abaComp") : $("abaServ");
+      selecionarAba(outra); outra.focus();
+    }
+  });
+});
+
+$("busca").addEventListener("input", () => DADOS && desenharTabela());
+
+document.querySelectorAll("th[data-chave] button").forEach(btn => btn.addEventListener("click", () => {
+  const k = btn.parentElement.dataset.chave;
+  if (ordem.chave !== k) ordem = { chave: k, dir: k === "nome" ? 1 : -1 };
+  else if ((k === "nome" && ordem.dir === 1) || (k !== "nome" && ordem.dir === -1)) ordem.dir *= -1;
+  else ordem = { chave: null, dir: 1 }; // terceiro clique: volta à ordem da planilha
+  desenharTabela();
+}));
+
+function alternarLinha(tr) {
+  if (!estreito() || !KB.length) return;
+  const det = document.querySelector(`tr[data-det="${tr.dataset.i}"]`);
+  const aberta = tr.getAttribute("aria-expanded") === "true";
+  tr.setAttribute("aria-expanded", String(!aberta));
+  det.classList.toggle("aberta", !aberta);
+}
+$("corpoTabela").addEventListener("keydown", e => {
+  const tr = e.target.closest("tr.linha");
+  if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); alternarLinha(tr); }
+});
+$("corpoTabela").addEventListener("click", e => {
+  const tr = e.target.closest("tr.linha");
+  if (tr) alternarLinha(tr);
+});
+
+// Redesenha os gráficos ao cruzar a largura de celular (tamanho de fonte e altura das linhas).
+let eraEstreito = estreito();
+window.addEventListener("resize", () => {
+  const agora = estreito();
+  if (agora !== eraEstreito && DADOS) {
+    eraEstreito = agora;
+    if ($("painelComp").hidden) desenharServicos(); else desenharComparativo();
+  }
+});
+
+carregar();
+</script>
+</body>
+</html>
